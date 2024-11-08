@@ -4,6 +4,8 @@ import abstracts.Channel;
 import implems.Broker;
 import implems.Broker.AcceptListener;
 import implems.Broker.ConnectListener;
+import implems.Channel.ReadListener;
+import implems.Channel.WriteListener;
 import utils.EventPump;
 import implems.Task;
 
@@ -12,10 +14,38 @@ public class BasicTest {
 	public static void main(String[] args) {
 		Broker b = new Broker("Broker");
 		
+		WriteListener wr = new WriteListener() {
+			
+			@Override
+			public void written(int byteWrote) {
+				System.out.println("Written");
+			}
+		};
+
+		
+		
+		
 		ConnectListener cl = new ConnectListener() {
             @Override
             public void connected(Channel queue) {
+        		
+        		ReadListener rl = new ReadListener() {
+        			@Override
+        			public void read(byte[] bytes) {
+        				System.out.println("Read");
+        			}
+
+        			@Override
+        			public void available() {
+        				// TODO Auto-generated method stub
+        				System.out.println("Available");
+        			}
+        		};
+        		
             	System.out.println("Connected");
+            	queue.setListener(rl);
+            	byte[] msg = "Hello".getBytes();
+            	queue.write(msg, 0, msg.length, wr);
             }
 			@Override
 			public void refused() { System.err.println("Should not fail");}
@@ -25,6 +55,25 @@ public class BasicTest {
 			@Override
 			public void accepted(Channel queue) {
 				System.out.println("Accepted");
+				
+				
+				ReadListener rl = new ReadListener() {
+					@Override
+					public void read(byte[] bytes) {
+						System.out.println("Read : " + new String(bytes));
+						
+					}
+
+					@Override
+					public void available() {
+						// TODO Auto-generated method stub
+						System.out.println("Available");
+						byte[] msg = new byte["Hello".getBytes().length];
+						queue.read(msg, 0, "Hello".getBytes().length);
+					}
+				};
+				
+				queue.setListener(rl);
 			}
 		};
 		

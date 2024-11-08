@@ -8,15 +8,11 @@ public class Channel extends abstracts.Channel {
 	
 	public interface ReadListener {
 	    void read(byte[] bytes);
+	    void available();
 	}
 
     public interface WriteListener {
-    	Object id = null;
-
-		// void available(Channel l);
     	void written(int byteWrote);
-
-		void setChannel(abstracts.Channel queue);
     }
 	
 	private volatile boolean localDisconnected = false;   
@@ -31,8 +27,15 @@ public class Channel extends abstracts.Channel {
 		this.buffIn = buffIn;
 		this.buffOut = buffOut;
 		this.remoteDisconnected = disconnected;
+		Task.task().post(this);
 	}
-
+	
+	@Override
+	public void run() {
+		if(!this.buffIn.empty()) Task.task().post(()-> this.listener.available(), "Available Event");
+		Task.task().post(this);
+	}
+	
 	
 	@Override
 	public boolean read(byte[] bytes, int offset, int length) {
