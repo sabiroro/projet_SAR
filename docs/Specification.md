@@ -22,7 +22,7 @@ abstract boolean connect(int port, String name, ConnectListener cnl);
 
 ```java  
 public interface AcceptListener {  
-	void accepted(ChannelAbstract queue);  
+	void accepted(ChannelAbstract channel);  
 }  
 ```
 
@@ -31,7 +31,7 @@ public interface AcceptListener {
 ```java  
 public interface ConnectListener {  
 	void refused();  
-	void connected(ChannelAbstract queue);  
+	void connected(ChannelAbstract channel);  
 }  
 ```
 
@@ -50,7 +50,8 @@ When either `accept()` or `connect()` is called, specific events (from `ConnectL
 
 #### **Port Listening Constraints and Connection Capacity**
 
-The `accept()` method opens a listening port on the designated broker (e.g., Broker A), allowing it to handle one incoming connection request at a time. Implementing a `bind` method would enable a port to accept multiple connections simultaneously, requiring multiple `accept()` calls.
+The `accept()` method opens a listening port on the designated broker (e.g., Broker A), allowing it to handle one incoming connection request at a time.
+> Note: Implementing a `bind` method would enable a port to accept multiple connections simultaneously, requiring multiple `accept()` calls.
 
 #### **Connection Conditions and Timeout Management**
 
@@ -80,12 +81,12 @@ A channel is the object that allows doing bytes circulation between 2 brokers. T
 
 The **read** function allows a broker to read incoming byte sequences from the connected broker.
 
-- **Method:** `void read(ReadListener listener)`  
-- **Description:** This method triggers the `read(byte[] bytes, int offset, int length, int bytesRead)` event whenever data is available to read.   
+- **Method:** `void read(byte[] bytes, int offset, int length, ReadListener listener)`  
+- **Description:** This method triggers the `read(byte[] bytes)` event whenever data is available to read.   
    - **bytes:** Buffer into which the read bytes are stored.  
    - **offset:** The starting point in the buffer for the next read operation.  
    - **length:** The number of bytes available for reading.  
-   - **bytesRead:** The total number of bytes read in this operation
+   - **listener:** The listener to be notified some bytes were read.
 
 - **Disconnection Scenario:**    
   If the remote channel disconnects, the local channel can complete reading any remaining bytes and then raises a `DisconnectException`. After handling this exception, the channel disconnects to indicate the end of communication.
@@ -97,11 +98,13 @@ The **read** function allows a broker to read incoming byte sequences from the c
 The **write** function enables a broker to send byte sequences to the connected broker.
 
 - **Method:** `void write(byte[] bytes, int offset, int length, WriteListener listener)`  
-- **Description:** This method triggers the `written(byte[] bytes, int offset, int length, int bytesWritten)` event once bytes have been successfully written.  
+- **Description:** This method triggers the `written(nbytes)` event once bytes have been successfully written.  
    - **bytes:** Buffer containing the bytes to be written.  
    - **offset:** The starting point in the buffer for the write operation.  
    - **length:** The number of bytes to write.  
-   - **bytesWritten:** The number of bytes successfully written during this operation.
+   - **listener:** The listener to be notified when some bytes were written.
+  
+>  - **nbytes:** The number of bytes successfully written during this operation
 
 - **Disconnection Scenario:**    
   If the remote channel disconnects, any data written after this point will be silently dropped, and no further write operations will be acknowledged by the remote broker.
@@ -132,7 +135,7 @@ Listener {
 ```java  
 Channel {  
     void setListener(ReadListener listener);  
-    int read(byte[] bytes, int offset, int length);  
+    void read(byte[] bytes, int offset, int length, ReadListener listener);  
     void write(byte[] bytes, int offset, int length, WriteListener listener);  
 }  
 ```
