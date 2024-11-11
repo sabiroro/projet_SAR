@@ -1,7 +1,6 @@
 package implems;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import utils.CircularBuffer;
 
 public class Channel extends abstracts.Channel {
@@ -32,7 +31,9 @@ public class Channel extends abstracts.Channel {
 	
 	@Override
 	public void run() {
-		if(!this.buffIn.empty()) Task.task().post(()-> this.listener.available(), "Available Event");
+		if(!this.buffIn.empty() && this.listener != null) {
+			Task.task().post(()-> this.listener.available(), "Available Event");
+		}
 		Task.task().post(this);
 	}
 	
@@ -49,17 +50,22 @@ public class Channel extends abstracts.Channel {
 		if (buffIn.empty()) {
 			if (remoteDisconnected.get()) return false;
 			
-			if(this.listener != null) this.listener.read(new byte[0]);
+			if(this.listener != null) Task.task().post(() -> this.listener.read(new byte[0]), "Internal read event of size 0");
 			
 			return true;
 		}
+		
 		int i = 0;
 		while(i < length && !buffIn.empty()) {
 			bytes[offset + i] = buffIn.pull();
 			i++;
 		} 
 		
-		if(this.listener != null) this.listener.read(bytes);
+		// Create a new array with the correct size
+		byte[] newBytes = new byte[i];
+		System.arraycopy(bytes, offset, newBytes, 0, i);
+		
+		if(this.listener != null) Task.task().post(() -> this.listener.read(newBytes), "Internal read of size : " + newBytes.length);
 		
 		return true;
 	}
@@ -72,7 +78,7 @@ public class Channel extends abstracts.Channel {
 
 		if (remoteDisconnected.get()) {
 			// Silently ignore writing if remote side is disconnected "Wrote length"
-			Task.task().post(()-> wl.written(length));
+			Task.task().post(()-> wl.written(length), ("Internal write event : " + length));
 			return true; 
 		}
 		
@@ -80,18 +86,18 @@ public class Channel extends abstracts.Channel {
 
 		
 		if (buffOut.full()) {
-			Task.task().post(()-> wl.written(0));
+			Task.task().post(()-> wl.written(0), "Internal write event : 0");
 			return true; // "Wrote 0"
 		}
 		
-		while (bytesWritten[0] < length && !buffOut.full()) {
+		while (bytesWritten[0] < (length - offset) && !buffOut.full()) {
 				buffOut.push(bytes[offset + bytesWritten[0]]);
 				bytesWritten[0]++;
 				
 		}
 		
 		// "Wrote bytesWritten"
-		Task.task().post(()-> wl.written(bytesWritten[0]));
+		Task.task().post(()-> wl.written(bytesWritten[0]), "Internal bytes written event : " + bytesWritten[0]);
 		
 		return true;
 	}
