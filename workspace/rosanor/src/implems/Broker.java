@@ -72,8 +72,6 @@ public class Broker extends abstracts.Broker {
 			this.cb_in = connect_cb_out;
 			this.cb_out = connect_cb_in;
 			
-			disconnect_monitoring = new AtomicBoolean(false);
-			
 			Channel accept_channel = new Channel(cb_in, cb_out, disconnect_monitoring);
 			
 			Task.task().post(() -> acceptEvents.get(this.port).al.accepted(accept_channel), "Accepted Event");

@@ -33,6 +33,8 @@ public class BasicQueueTest {
 					@Override
 					public void received(byte[] msg) {
 						System.out.println("Received : " + new String(msg));
+						queue.close();
+						queue.send(new Message("MESSAGE NB 2"));
 					}
 					
 					@Override
@@ -62,6 +64,7 @@ public class BasicQueueTest {
 					@Override
 					public void received(byte[] msg) {
 						System.out.println("Received : " + new String(msg));
+						
 					}
 					
 					@Override

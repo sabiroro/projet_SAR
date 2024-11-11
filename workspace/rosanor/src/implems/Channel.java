@@ -8,6 +8,7 @@ public class Channel extends abstracts.Channel {
 	public interface ReadListener {
 	    void read(byte[] bytes);
 	    void available();
+	    void closed();
 	}
 
     public interface WriteListener {
@@ -31,9 +32,12 @@ public class Channel extends abstracts.Channel {
 	
 	@Override
 	public void run() {
-		if(!this.buffIn.empty() && this.listener != null) {
-			Task.task().post(()-> this.listener.available(), "Available Event");
-		}
+		if(disconnected()) {
+			Task.task().post(()-> this.listener.closed(), "Internal channel closed event");
+			return;
+		} else if(!this.buffIn.empty() && this.listener != null) {
+			Task.task().post(()-> this.listener.available(), "Internal available event");
+		} 			
 		Task.task().post(this);
 	}
 	
@@ -45,7 +49,6 @@ public class Channel extends abstracts.Channel {
 		if (localDisconnected) {
 			return false;
 		}
-
 		
 		if (buffIn.empty()) {
 			if (remoteDisconnected.get()) return false;
@@ -121,10 +124,4 @@ public class Channel extends abstracts.Channel {
 	public void setListener(ReadListener listener) {
 		this.listener = listener;
 	}
-
-
-
-
-
-
 }
