@@ -2,6 +2,8 @@ package implems;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import utils.CircularBuffer;
+import utils.EventPump;
+import utils.EventPump.VerboseLevel;
 
 public class Channel extends abstracts.Channel {
 	
@@ -27,18 +29,22 @@ public class Channel extends abstracts.Channel {
 		this.buffIn = buffIn;
 		this.buffOut = buffOut;
 		this.remoteDisconnected = disconnected;
-		Task.task().post(this);
+		Task.task().post(this, "Initial internal READ event");
+		EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal channel created");
 	}
 	
 	@Override
 	public void run() {
 		if(disconnected()) {
+			EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Internal channel closed event");
 			Task.task().post(()-> this.listener.closed(), "Internal channel closed event");
 			return;
 		} else if(!this.buffIn.empty() && this.listener != null) {
+			EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal available event");
 			Task.task().post(()-> this.listener.available(), "Internal available event");
-		} 			
-		Task.task().post(this);
+		}
+		EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal looping READ event"); 			
+		Task.task().post(this, "Internal looping READ event");
 	}
 	
 	
@@ -53,7 +59,12 @@ public class Channel extends abstracts.Channel {
 		if (buffIn.empty()) {
 			if (remoteDisconnected.get()) return false;
 			
-			if(this.listener != null) Task.task().post(() -> this.listener.read(new byte[0]), "Internal read event of size 0");
+
+			if(this.listener != null){
+			 	EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal read event of size 0");
+				Task.task().post(() -> this.listener.read(new byte[0]), "Internal read event of size 0");
+			}
+				
 			
 			return true;
 		}
@@ -68,8 +79,10 @@ public class Channel extends abstracts.Channel {
 		byte[] newBytes = new byte[i];
 		System.arraycopy(bytes, offset, newBytes, 0, i);
 		
-		if(this.listener != null) Task.task().post(() -> this.listener.read(newBytes), "Internal read of size : " + newBytes.length);
-		
+		if(this.listener != null) {
+			EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Internal read of size : " + newBytes.length);
+			Task.task().post(() -> this.listener.read(newBytes), "Internal read of size : " + newBytes.length);
+		}
 		return true;
 	}
 
@@ -81,7 +94,8 @@ public class Channel extends abstracts.Channel {
 
 		if (remoteDisconnected.get()) {
 			// Silently ignore writing if remote side is disconnected "Wrote length"
-			Task.task().post(()-> wl.written(length), ("Internal write event : " + length));
+			EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Internal DROPPED write event : " + length);
+			Task.task().post(()-> wl.written(length), ("Internal DROPPED write event : " + length));
 			return true; 
 		}
 		
@@ -89,6 +103,7 @@ public class Channel extends abstracts.Channel {
 
 		
 		if (buffOut.full()) {
+			EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal write event : 0");
 			Task.task().post(()-> wl.written(0), "Internal write event : 0");
 			return true; // "Wrote 0"
 		}
@@ -100,6 +115,7 @@ public class Channel extends abstracts.Channel {
 		}
 		
 		// "Wrote bytesWritten"
+		EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Internal bytes written event : " + bytesWritten[0]);
 		Task.task().post(()-> wl.written(bytesWritten[0]), "Internal bytes written event : " + bytesWritten[0]);
 		
 		return true;
@@ -109,6 +125,7 @@ public class Channel extends abstracts.Channel {
 	// we donc care about the local one as we wont be able to read or write anymore
 	@Override
 	public synchronized void disconnect() {
+		EventPump.log(VerboseLevel.LOW_VERBOSE, "Internal channel disconnected");
 		localDisconnected = true;
 		remoteDisconnected.set(true);	
 	}
@@ -122,6 +139,7 @@ public class Channel extends abstracts.Channel {
 
 	@Override
 	public void setListener(ReadListener listener) {
+		EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal channel listener set");
 		this.listener = listener;
 	}
 }

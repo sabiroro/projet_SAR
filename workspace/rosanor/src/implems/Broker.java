@@ -1,11 +1,13 @@
 package implems;
 
+import java.awt.Event;
 import utils.BrokerManager;
 import utils.CircularBuffer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import utils.EventPump;
 
 
 public class Broker extends abstracts.Broker {
@@ -36,11 +38,13 @@ public class Broker extends abstracts.Broker {
 		CircularBuffer cb_out;
 		
 		public Request(int port, AcceptListener l) {
+			
 			this.port = port; this.al = l;
 			ArrayList<Request> connectReq = connectEvents.get(this.port);
 			if(connectReq != null) {
 				if(connectReq.size() > 0) {
-							Task.task().post(this, "Rendez vous Event");
+					EventPump.log(EventPump.VerboseLevel.MEDIUM_VERBOSE, "Broker: Internal rendez vous Event from accept");
+					Task.task().post(this, "Internal rendez vous Event");
 				}
 			}
 		}
@@ -48,7 +52,8 @@ public class Broker extends abstracts.Broker {
 		public Request(int port, String name, ConnectListener l) {
 			this.port = port; this.name = name; this.cl = l;
 			if(acceptEvents.get(port) != null) {
-				Task.task().post(this, "Rendez vous Event");
+				EventPump.log(EventPump.VerboseLevel.MEDIUM_VERBOSE, "Broker: Internal rendez vous Event from connect");
+				Task.task().post(this, "Internal rendez vous Event");
 			}
 		}
 		
@@ -66,7 +71,8 @@ public class Broker extends abstracts.Broker {
 			
 			ConnectListener connect_listener = connect_request.remove(0).cl;
 			
-			Task.task().post(() -> connect_listener.connected(connect_channel), "Connected Event");
+			EventPump.log(EventPump.VerboseLevel.LOW_VERBOSE, "Broker: Internal connected Event");
+			Task.task().post(() -> connect_listener.connected(connect_channel), "Internal connected Event");
 			
 			// Then we handle ourselves
 			this.cb_in = connect_cb_out;
@@ -74,18 +80,21 @@ public class Broker extends abstracts.Broker {
 			
 			Channel accept_channel = new Channel(cb_in, cb_out, disconnect_monitoring);
 			
-			Task.task().post(() -> acceptEvents.get(this.port).al.accepted(accept_channel), "Accepted Event");
+			EventPump.log(EventPump.VerboseLevel.HIGH_VERBOSE, "Broker: Internal accepted Event");
+			Task.task().post(() -> acceptEvents.get(this.port).al.accepted(accept_channel), "Internal accepted Event");
 		}
 	}
 	
 	public Broker(String name) {
 		this.name = name;
 		// Might want to force user to do that by his own not to leak 'this' reference
+		EventPump.log(EventPump.VerboseLevel.HIGH_VERBOSE, "Broker: Adding broker to the manager");
 		BrokerManager.getInstance().addBroker(this.name, this);
 	}
 
 	@Override
 	public boolean accept(int port, AcceptListener acl) {
+		EventPump.log(EventPump.VerboseLevel.MEDIUM_VERBOSE, "Broker: Accept request");
 		acceptEvents.put(port, new Request(port, acl));
 		return true;
 	}
@@ -97,10 +106,12 @@ public class Broker extends abstracts.Broker {
 			abstracts.Broker b = BrokerManager.getInstance().getBroker(name);
 			// Signal to the user the action cannot be performed 
 			if (b == null) {
-				Task.task().post(() -> cnl.refused(), "Refused Event");
+				EventPump.log(EventPump.VerboseLevel.MEDIUM_VERBOSE, "Broker: Refused connect request");
+				Task.task().post(() -> cnl.refused(), "Internal refused Event");
 				return false;  
 			}
 			
+			EventPump.log(EventPump.VerboseLevel.MEDIUM_VERBOSE, "Broker: Forwarding connect request");
 			return b.connect(port, name, cnl); 
 		}
 		
@@ -113,7 +124,8 @@ public class Broker extends abstracts.Broker {
 		
 		// If max connect then refuse
 		if(listOfRequests.size() >= MAX_CONNECTION_SIZE) {
-			Task.task().post(() -> cnl.refused(), "Refused Event");
+			EventPump.log(EventPump.VerboseLevel.MEDIUM_VERBOSE, "Broker: Refused connect request");
+			Task.task().post(() -> cnl.refused(), "Internal refused Event");
 			return false;
 		}
 		

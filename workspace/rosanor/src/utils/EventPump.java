@@ -5,6 +5,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import abstracts.Task;
 import implems.Task.EventToPublish;
+import utils.EventPump.VerboseLevel;
 
 public class EventPump extends Thread {
 
@@ -31,7 +32,22 @@ public class EventPump extends Thread {
         return currentEvent.src;
     }
 
-    protected final boolean VERBOSE = false;
+    public enum VerboseLevel {
+        HIGH_VERBOSE, 
+        MEDIUM_VERBOSE, 
+        LOW_VERBOSE, 
+        NO_VERBOSE
+    }
+
+   
+    public static VerboseLevel VERBOSE = VerboseLevel.HIGH_VERBOSE;
+    
+    public static void log(VerboseLevel level, String message) {
+	    if (EventPump.VERBOSE.ordinal() <= level.ordinal()) {
+	        System.out.println(message);
+	    }
+	}
+
 
     @Override
     public void run() {
@@ -39,7 +55,7 @@ public class EventPump extends Thread {
             try {
                 // Take blocks until a task is available
                 currentEvent = taskQueue.take(); 
-                if( VERBOSE ) System.out.println("Pump processing : " + currentEvent.name);
+                EventPump.log(VerboseLevel.HIGH_VERBOSE,"Pump processing : " + currentEvent.name);
                 currentEvent.run();
             } catch (InterruptedException e) {
                 // If interrupted and we're no longer running, exit loop

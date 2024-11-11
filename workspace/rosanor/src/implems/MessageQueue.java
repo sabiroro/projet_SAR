@@ -4,6 +4,8 @@ import abstracts.Channel;
 import implems.Channel.ReadListener;
 import implems.Channel.WriteListener;
 import java.nio.ByteBuffer;
+import utils.EventPump;
+import utils.EventPump.VerboseLevel;
 
 public class MessageQueue extends abstracts.MessageQueue {
 
@@ -36,24 +38,20 @@ public class MessageQueue extends abstracts.MessageQueue {
 
         @Override
         public void read(byte[] bytes) {
-            System.out.println("Read: " + new String(bytes) + " size: " + bytes.length);
-
             switch (readerState) {
-                case READING_SIZE -> {
-                    // Accumulate bytes into the sizeBuffer without overriding previous bytes
-                    int bytesToCopy = Math.min(bytes.length, 4 - sizeBufferOffset);
-                    System.arraycopy(bytes, 0, sizeBuffer, sizeBufferOffset, bytesToCopy);
-                    sizeBufferOffset += bytesToCopy;
-
-                    // Check if we've read the full 4-byte size
-                    if (sizeBufferOffset == 4) {
-                        int size = Message.getSize(sizeBuffer);
-                        currentReadMessage = new Message(size);
-                        readerState = ReaderState.READING_MESSAGE;
-                        sizeBufferOffset = 0; // Reset offset for the next size read
-                        System.out.println("Reader Automaton: Size determined, reading message of size " + size);
-                    }
-                }
+	            case READING_SIZE -> {
+	                int bytesToCopy = Math.min(bytes.length, 4 - sizeBufferOffset);
+	                System.arraycopy(bytes, 0, sizeBuffer, sizeBufferOffset, bytesToCopy);
+	                sizeBufferOffset += bytesToCopy;
+	
+	                if (sizeBufferOffset == 4) {
+	                    int size = Message.getSize(sizeBuffer);
+	                    currentReadMessage = new Message(size);
+	                    readerState = ReaderState.READING_MESSAGE;
+	                    sizeBufferOffset = 0; // Reset offset for the next size read
+	                    EventPump.log(VerboseLevel.LOW_VERBOSE, "Reader Automaton: Size determined, reading message of size " + size);
+	                }
+	            }
                 case READING_MESSAGE -> {
                     currentReadMessage.addBytes(bytes);
 
@@ -61,7 +59,7 @@ public class MessageQueue extends abstracts.MessageQueue {
                     if (currentReadMessage.offset == currentReadMessage.length) {
                     	Task.task().post(() -> externalQueueListener.received(currentReadMessage.bytes), "External revieved event");
                         readerState = ReaderState.READING_SIZE;
-                        System.out.println("Reader Automaton: Full message received, switching to READING_SIZE");
+                        EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Reader Automaton: Full message received, switching to READING_SIZE");
                     }
                 }
                 default -> System.err.println("Error: Unknown state in reader automaton");
@@ -72,18 +70,19 @@ public class MessageQueue extends abstracts.MessageQueue {
         public void available() {
             // Determine the number of bytes needed based on the current state
             switch (readerState) {
-                case READING_SIZE -> {
-                    // Calculate how many more bytes are needed to complete the size read
-                    int remainingSizeBytes = 4 - sizeBufferOffset;
-                    byte[] buffer = new byte[remainingSizeBytes];
-                    internalChannel.read(buffer, 0, buffer.length);
-                }
-                case READING_MESSAGE -> {
-                    // Calculate remaining message bytes to read
-                    int remainingMessageBytes = currentReadMessage.length - currentReadMessage.offset;
-                    byte[] buffer = new byte[remainingMessageBytes];
-                    internalChannel.read(buffer, 0, buffer.length);
-                }
+	            case READING_SIZE -> {
+	                int remainingSizeBytes = 4 - sizeBufferOffset;
+	                byte[] buffer = new byte[remainingSizeBytes];
+	                internalChannel.read(buffer, 0, buffer.length);
+	                EventPump.log(VerboseLevel.LOW_VERBOSE, "Reader Automaton: Requested " + buffer.length + " bytes for size read");
+	            }
+	            case READING_MESSAGE -> {
+	                int remainingMessageBytes = currentReadMessage.length - currentReadMessage.offset;
+	                byte[] buffer = new byte[remainingMessageBytes];
+	                internalChannel.read(buffer, 0, buffer.length);
+	                EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Reader Automaton: Requested " + buffer.length + " bytes for message read");
+	            }
+
                 default -> System.err.println("Error: Unknown state in reader automaton");
             }
         }
@@ -107,24 +106,28 @@ public class MessageQueue extends abstracts.MessageQueue {
 			// It does not need a break statement
 			switch (senderState) {
 				case SENDING_SIZE -> {
-                                    if(byteSentTotal < 4) {
-                                        byte[] lengthBytes = ByteBuffer.allocate(4).putInt(currentSendMessage.length).array();
-                                        internalChannel.write(lengthBytes, byteWrote, 4 - byteWrote, internalWriteListener);
-                                    } else {
-                                        senderState = SenderState.SENDING_MESSAGE;
-                                        byteSentTotal = 0;
-                                        internalChannel.write(currentSendMessage.bytes, byteSentTotal, currentSendMessage.length, internalWriteListener);
-                                    }
-                        }
+				    if (byteSentTotal < 4) {
+				        byte[] lengthBytes = ByteBuffer.allocate(4).putInt(currentSendMessage.length).array();
+				        internalChannel.write(lengthBytes, byteWrote, 4 - byteWrote, internalWriteListener);
+				        EventPump.log(VerboseLevel.LOW_VERBOSE, "Sender Automaton: Writing size bytes, progress: " + byteSentTotal + "/4");
+				    } else {
+				        senderState = SenderState.SENDING_MESSAGE;
+				        byteSentTotal = 0;
+				        internalChannel.write(currentSendMessage.bytes, byteSentTotal, currentSendMessage.length, internalWriteListener);
+				        EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Sender Automaton: Size sent, switching to SENDING_MESSAGE");
+				    }
+				}
 				case SENDING_MESSAGE -> {
-                                    if(byteSentTotal < currentSendMessage.length) {
-                                    	internalChannel.write(currentSendMessage.bytes, byteSentTotal, currentSendMessage.length, internalWriteListener);
-                                    } else {
-                                        senderState = SenderState.SENDING_SIZE;
-                                        byteSentTotal = 0;
-                                        Task.task().post(() -> externalQueueListener.sent(currentSendMessage), "External sent event");
-                                    }
-                        }
+				    if (byteSentTotal < currentSendMessage.length) {
+				        internalChannel.write(currentSendMessage.bytes, byteSentTotal, currentSendMessage.length, internalWriteListener);
+				        EventPump.log(VerboseLevel.LOW_VERBOSE, "Sender Automaton: Sending message bytes, progress: " + byteSentTotal + "/" + currentSendMessage.length);
+				    } else {
+				        senderState = SenderState.SENDING_SIZE;
+				        byteSentTotal = 0;
+				        Task.task().post(() -> externalQueueListener.sent(currentSendMessage), "External sent event");
+				        EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Sender Automaton: Message sent, switching to SENDING_SIZE");
+				    }
+				}
 				default -> {
 									System.err.println("Error : Unknown state");
 						}
@@ -140,12 +143,13 @@ public class MessageQueue extends abstracts.MessageQueue {
 	
 	@Override
 	public void setListener(QueueListener l) {
+        EventPump.log(VerboseLevel.HIGH_VERBOSE, "MessageQueue: Setting listener");
 		this.externalQueueListener = l;
 	}
 
 	@Override
 	public boolean send(Message msg) {
-		System.out.println("Sending : " + msg);
+		EventPump.log(VerboseLevel.HIGH_VERBOSE, "MessageQueue: Sending message");
 	    
 		// Buffer used to send the size of the message
 	    byte[] lengthBytes = ByteBuffer.allocate(4).putInt(msg.length).array();
@@ -161,6 +165,7 @@ public class MessageQueue extends abstracts.MessageQueue {
 
 	@Override
 	public void close() {
+        EventPump.log(VerboseLevel.LOW_VERBOSE, "MessageQueue: Closing");
 		internalChannel.disconnect();
 	}
 
@@ -168,5 +173,8 @@ public class MessageQueue extends abstracts.MessageQueue {
 	public boolean closed() {
 		return internalChannel.disconnected();
 	}
+	
+	
+
 
 }

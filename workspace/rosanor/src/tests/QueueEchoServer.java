@@ -10,7 +10,7 @@ import implems.QueueBroker;
 import implems.Task;
 import utils.EventPump;
 
-public class BasicQueueTest {
+public class QueueEchoServer {
 	public static void main(String[] args) {
 		EventPump.getInstance().start();
 		
@@ -33,8 +33,7 @@ public class BasicQueueTest {
 					@Override
 					public void received(byte[] msg) {
 						System.out.println("Received : " + new String(msg));
-						queue.close();
-						queue.send(new Message("MESSAGE NB 2"));
+						queue.send(new Message(new String(msg)));
 					}
 					
 					@Override
@@ -64,7 +63,7 @@ public class BasicQueueTest {
 					@Override
 					public void received(byte[] msg) {
 						System.out.println("Received : " + new String(msg));
-						
+						queue.send(new Message(new String(msg)));
 					}
 					
 					@Override
