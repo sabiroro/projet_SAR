@@ -28,7 +28,7 @@ public class Channel extends abstracts.Channel {
 		this.buffIn = buffIn;
 		this.buffOut = buffOut;
 		this.remoteDisconnected = disconnected;
-		Task.task().post(this, "Initial internal READ event");
+		
 		EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal channel created");
 	}
 	
@@ -137,5 +137,7 @@ public class Channel extends abstracts.Channel {
 	public void setListener(ReadListener listener) {
 		EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal channel listener set");
 		this.listener = listener;
+		// Start the reading process
+		Task.task().post(this, "Initial internal READ event");
 	}
 }

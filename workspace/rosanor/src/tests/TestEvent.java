@@ -1,22 +1,47 @@
-import java.net.http.WebSocket.Listener;
+package tests;
+
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeoutException;
 
+import abstracts.MessageQueue.QueueListener;
+import abstracts.QueueBroker.QueueAcceptListener;
 import abstracts.QueueBroker.QueueConnectListener;
-import implems.Broker.AcceptListener;
-import implems.MessageQueue;
+import implems.Message;
 import implems.QueueBroker;
+import utils.BrokerManager;
+import utils.EventPump;
 
 public class TestEvent {
 	public static void main(String[] args) {
 		try {
+			
+			EventPump.getInstance().start();
 			test1();
-			test2(1, 1);
-			test2(10, 2);
-			test3(100);
-			test4();
-			test5();
+			BrokerManager.getInstance().removeAllBrokers();
+			EventPump.getInstance().refreshPump();
 
+			test2(1, 1);
+			BrokerManager.getInstance().removeAllBrokers();
+			
+			EventPump.getInstance().refreshPump();
+			
+			
+			test2(10, 2);
+			BrokerManager.getInstance().removeAllBrokers();
+			EventPump.getInstance().refreshPump();
+			
+			test3(100);
+			BrokerManager.getInstance().removeAllBrokers();
+			EventPump.getInstance().refreshPump();
+			
+			test4();
+			BrokerManager.getInstance().removeAllBrokers();
+			EventPump.getInstance().refreshPump();
+			
+			test5();
+			BrokerManager.getInstance().removeAllBrokers();
+			EventPump.getInstance().refreshPump();
+			
 			System.out.println("That's all folks");
 			System.exit(0);
 		} catch (Exception e) {
@@ -32,60 +57,60 @@ public class TestEvent {
 		Semaphore sm = new Semaphore(0); // Allows to block the execution until the echo message
 
 		abstracts.QueueBroker client = new QueueBroker("client");
-		abstracts.QueueBroker server = new QueueBroker("server");
+		abstracts.QueueBroker server = new QueueBroker("server1");
 		int connection_port = 6969;
 
-		client.connect("server", connection_port, new QueueConnectListener() {
-			@Override
-			public void connected(MessageQueue queue) {
-				queue.setListener(new Listener() {
-					@Override
+		client.connect("server1", connection_port, new QueueConnectListener() {
+			
+			public void connected(abstracts.MessageQueue queue) {
+				queue.setListener(new QueueListener() {
+					
 					public void received(byte[] msg) {
 						System.out.println("	-> Message echoed : " + new String(msg));
 						queue.close();
 					}
 
-					@Override
-					public void sent(byte[] msg) {
+					
+					public void sent(Message msg) {
 						// Nothing there
 					}
 
-					@Override
+					
 					public void closed() {
 						System.out.println("	-> Connection closed (client)");
 						sm.release(); // Allows to end the test
 					}
 				});
 
-				queue.send("Hello world!".getBytes());
+				queue.send(new Message(new String("Hello world!".getBytes())));
 			}
 
-			@Override
+			
 			public void refused() {
 				System.out.println("	-> Connection refused (client)");
 				throw new IllegalStateException("	-> Connection refused (client)");
 			}
 		});
 
-		server.bind(connection_port, new AcceptListener() {
-			@Override
-			public void accepted(MessageQueue queue) {
-				queue.setListener(new Listener() {
-					@Override
+		server.bind(connection_port, new QueueAcceptListener() {
+			
+			public void accepted(abstracts.MessageQueue queue) {
+				queue.setListener(new QueueListener() {
+					
 					public void received(byte[] msg) {
-						queue.send(msg);
+						queue.send(new Message(new String(msg)));
 					}
 
-					@Override
-					public void sent(byte[] msg) {
+					
+					public void sent(Message msg) {
 						queue.close();
 					}
 
-					@Override
+					
 					public void closed() {
-						server.unbind(connection_port);
 						System.out.println("	-> Connection closed (server)");
 						sm.release(); // Allows to end the test
+						server.unbind(connection_port);
 					}
 				});
 			}
@@ -102,22 +127,22 @@ public class TestEvent {
 
 	private static void echo_client(abstracts.QueueBroker client, int connection_port, Semaphore sm,
 			boolean try_to_reconnect) throws TimeoutException {
-		client.connect("server", connection_port, new QueueConnectListener() {
-			@Override
-			public void connected(MessageQueue queue) {
-				queue.setListener(new Listener() {
-					@Override
+		client.connect("server2", connection_port, new QueueConnectListener() {
+			
+			public void connected(abstracts.MessageQueue queue) {
+				queue.setListener(new QueueListener() {
+					
 					public void received(byte[] msg) {
 						System.out.println("	-> Echo message : " + new String(msg));
 						queue.close();
 					}
 
-					@Override
-					public void sent(byte[] msg) {
+					
+					public void sent(Message msg) {
 						// Nothing there
 					}
 
-					@Override
+					
 					public void closed() {
 						System.out.println("	-> Connection closed");
 						sm.release();
@@ -127,10 +152,10 @@ public class TestEvent {
 					}
 				});
 
-				queue.send(("Hello world!" + ", port : " + connection_port).getBytes());
+				queue.send(new Message(new String(("Hello world!" + ", port : " + connection_port).getBytes())));
 			}
 
-			@Override
+			
 			public void refused() {
 				System.out.println("	-> Connection refused...");
 				if (try_to_reconnect) {
@@ -159,15 +184,15 @@ public class TestEvent {
 	}
 
 	private static void echo_server(abstracts.QueueBroker server, int connection_port, boolean need_to_unbind) {
-		server.bind(connection_port, new AcceptListener() {
-			@Override
-			public void accepted(MessageQueue queue) {
-				queue.setListener(new Listener() {
+		server.bind(connection_port, new QueueAcceptListener() {
+			
+			public void accepted(abstracts.MessageQueue queue) {
+				queue.setListener(new QueueListener() {
 					public void received(byte[] msg) {
-						queue.send(msg);
+						queue.send(new Message(new String(msg)));
 					}
 
-					public void sent(byte[] msg) {
+					public void sent(Message msg) {
 						if (need_to_unbind)
 							queue.close();
 					}
@@ -187,7 +212,7 @@ public class TestEvent {
 		Semaphore sm = new Semaphore(1 - nbre_clients); // Allows to block the execution until the echo message
 
 		int connection_port = 6969;
-		abstracts.QueueBroker server = new QueueBroker("server");
+		abstracts.QueueBroker server = new QueueBroker("server2");
 
 		for (int i = 0; i < nbre_clients; i++) {
 			abstracts.QueueBroker client = new QueueBroker("client" + i);
@@ -205,7 +230,7 @@ public class TestEvent {
 		Semaphore sm = new Semaphore(1 - nbre_clients); // Allows to block the execution until the echo message
 
 		int connection_port = 6969;
-		abstracts.QueueBroker server = new QueueBroker("server");
+		abstracts.QueueBroker server = new QueueBroker("server2");
 
 		for (int i = 0; i < nbre_clients; i++) {
 			int port = connection_port + i;
@@ -214,7 +239,7 @@ public class TestEvent {
 			if (i == nbre_clients - 1) {
 				System.out.println("We will wait 16 seconds to simulate a client reconnection");
 				Thread.currentThread();
-				Thread.sleep(16000); // Create a client's reconnection because of Timeout
+				Thread.sleep(1000); // Create a client's reconnection because of Timeout
 			}
 
 			echo_server(server, port, true);
@@ -227,27 +252,28 @@ public class TestEvent {
 	// Test the return statement of method connection
 	public static void test4() throws Exception {
 		System.out.println("Test 4 in progress...");
-
+		Semaphore sm = new Semaphore(-1);
+		
 		abstracts.QueueBroker client = new QueueBroker("client");
 		int connection_port = 6969;
 
-		AcceptListener default_accept_listener = new AcceptListener() {
+		QueueAcceptListener default_accept_listener = new QueueAcceptListener() {
 
-			@Override
-			public void accepted(MessageQueue queue) {
+			
+			public void accepted(abstracts.MessageQueue queue) {
 				// Just for test statement, nothing there
 			}
 		};
 
 		QueueConnectListener default_connect_listener = new QueueConnectListener() {
 
-			@Override
+			
 			public void refused() {
 				// Just for test statement, nothing there
 			}
 
-			@Override
-			public void connected(MessageQueue queue) {
+			
+			public void connected(abstracts.MessageQueue queue) {
 				// Just for test statement, nothing there
 			}
 		};
@@ -255,13 +281,13 @@ public class TestEvent {
 		// Initialization of server's method tests
 		boolean client_connect_test = false;
 
-		client_connect_test = client.connect("server", connection_port, default_connect_listener); // False
+		client_connect_test = client.connect("server3", connection_port, default_connect_listener); // False
 		if (client_connect_test)
 			throw new Exception("The client tries to connect a not existing broker !");
 
-		abstracts.QueueBroker server = new QueueBroker("server");
+		abstracts.QueueBroker server = new QueueBroker("server3");
 
-		client_connect_test = client.connect("server", connection_port, default_connect_listener); // True
+		client_connect_test = client.connect("server3", connection_port, default_connect_listener); // True
 		if (!client_connect_test)
 			throw new Exception("The client doesn't find the broker !");
 
@@ -288,83 +314,91 @@ public class TestEvent {
 		server_bind_test = server.bind(connection_port, default_accept_listener); // True
 		if (!server_bind_test)
 			throw new Exception("The server can't bind an old connection port !");
-
+		
+		if (server.unbind(connection_port) != true)
+			throw new Exception("The server should unbind here");
+		
+		
+		
 		System.out.println("Test 4 done !\n");
 	}
 
 	// Try to connect a broker to himself
 	public static void test5() throws Exception {
-		System.out.println("Test 6 in progress...");
-		Semaphore sm = new Semaphore(-1);
+		System.out.println("Test 5 in progress...");
+		int nb = 10000;
+		Semaphore sm = new Semaphore(-10000);
 
-		abstracts.QueueBroker qb = new QueueBroker("client");
-		int port = 123456789;
+		abstracts.QueueBroker qb = new QueueBroker("oneClient");
+		int port = 6970;
+		
 
-		qb.bind(port, new AcceptListener() {
+		QueueAcceptListener qal = new QueueAcceptListener() {
 
-			@Override
-			public void accepted(MessageQueue queue) {
-				queue.setListener(new Listener() {
+			
+			public void accepted(abstracts.MessageQueue queue) {
+				QueueListener ql = new QueueListener() {
 
-					@Override
-					public void sent(byte[] msg) {
+					
+					public void sent(Message msg) {
 						// Nothing there
 					}
 
-					@Override
+					
 					public void received(byte[] msg) {
-						System.out.println("    -> Message received (from accept) : " + new String(msg));
+						System.out.println("    -> Message received (from accept) : " + msg);
 						queue.close();
 					}
 
-					@Override
+					
 					public void closed() {
 						qb.unbind(port);
 						System.out.println("    -> Port unbinded");
 						sm.release();
 					}
-				});
+				};
+				
+				queue.setListener(ql);
 
-				queue.send("Hello me ! That's me !!!".getBytes());
+				queue.send(new Message(new String("Hello me ! That's me !!!".getBytes())));
 			}
-		});
+		};
+		
+	
 
-		qb.connect("client", port, new QueueConnectListener() {
-
-			@Override
+		QueueConnectListener qcl = new QueueConnectListener() {
 			public void refused() {
 				System.out.println("     -> Connection refused !!");
 			}
-
-			public void connected(MessageQueue queue) {
-				queue.setListener(new Listener() {
-
-					@Override
-					public void sent(byte[] msg) {
+			
+			public void connected(abstracts.MessageQueue queue) {
+				QueueListener ql = new QueueListener() {
+					public void sent(Message msg) {
 						queue.close();
 					}
 
-					@Override
+					
 					public void received(byte[] msg) {
 						System.out.println("    -> Message received (from connect) : " + new String(msg));
-						queue.send(msg);
+						queue.send(new Message(new String(msg)));
 					}
 
-					@Override
+					
 					public void closed() {
 						System.out.println("    -> Connection closed (from connect)");
 						sm.release();
 					}
-				});
+				};
+				queue.setListener(ql);
 			}
-
-			@Override
-			public void connected(abstracts.MessageQueue queue) {
-				// Nothing there
-			}
-		});
-
+		};
+		
+		for (int i = 0 ; i < nb ; i++) {
+			qb.bind(port+i, qal);
+			qb.connect("oneClient", port+i, qcl);
+		}
+		
 		sm.acquire();
-		System.out.println("Test 6 done !\n");
+		System.out.println("Test 5 done !\n");
 	}
 }

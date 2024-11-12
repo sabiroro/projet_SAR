@@ -57,7 +57,7 @@ public class MessageQueue extends abstracts.MessageQueue {
 
                     // Check if the full message has been read
                     if (currentReadMessage.offset == currentReadMessage.length) {
-                    	Task.task().post(() -> externalQueueListener.received(currentReadMessage.bytes), "External revieved event");
+                    	Task.task().post(() -> externalQueueListener.received(currentReadMessage.bytes), "External received event");
                         readerState = ReaderState.READING_SIZE;
                         EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Reader Automaton: Full message received, switching to READING_SIZE");
                     }
@@ -133,13 +133,14 @@ public class MessageQueue extends abstracts.MessageQueue {
 	
 	public MessageQueue(Channel channel) {
 		this.internalChannel = channel;
-		this.internalChannel.setListener(internaReadlListener);
 	}
 	
 	@Override
 	public void setListener(QueueListener l) {
-        EventPump.log(VerboseLevel.HIGH_VERBOSE, "MessageQueue: Setting listener");
+        EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "MessageQueue: Setting listener");
 		this.externalQueueListener = l;
+		// This will start the reading process, ensuring we can listen to it
+		this.internalChannel.setListener(internaReadlListener);
 	}
 
 	@Override

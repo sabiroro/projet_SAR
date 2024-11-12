@@ -10,7 +10,7 @@ import utils.EventPump.VerboseLevel;
 public class EventPump extends Thread {
 
 	private static EventPump instance;
-    private final BlockingQueue<EventToPublish> taskQueue;
+    private BlockingQueue<EventToPublish> taskQueue;
     private boolean running;
 
     // Private constructor to prevent instantiation
@@ -20,9 +20,8 @@ public class EventPump extends Thread {
         this.running = true;
     }
 
-    public void stopPump() {
-        running = false;
-        interrupt(); // Interrupt the thread when stopping
+    public void refreshPump() {
+        taskQueue = new LinkedBlockingQueue<>(); // Thread-safe queue
     }
 
     private EventToPublish currentEvent;
