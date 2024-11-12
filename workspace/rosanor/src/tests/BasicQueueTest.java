@@ -22,24 +22,24 @@ public class BasicQueueTest {
 
 			@Override
 			public void accepted(MessageQueue queue) {
-				System.out.println("Accepted");
+				//System.out.println("Accepted");
 				QueueListener ql = new QueueListener() {
 					
 					@Override
 					public void sent(Message msg) {
-						System.out.println("Message sent : " + new String(msg.getBytes()));
+						//System.out.println("Message sent : " + new String(msg.getBytes()));
 					}
 					
 					@Override
 					public void received(byte[] msg) {
-						System.out.println("Received : " + new String(msg));
+						//System.out.println("Received : " + new String(msg));
 						queue.close();
 						queue.send(new Message("MESSAGE NB 2"));
 					}
 					
 					@Override
 					public void closed() {
-						System.out.println("Closed");
+						//System.out.println("Closed");
 					}
 				};
 				
@@ -51,25 +51,25 @@ public class BasicQueueTest {
 
 			@Override
 			public void connected(MessageQueue queue) {
-				System.out.println("Connected");
-				System.out.println("Sending message");
+				//System.out.println("Connected");
+				//System.out.println("Sending message");
 				
 				QueueListener ql = new QueueListener() {
 					
 					@Override
 					public void sent(Message msg) {
-						System.out.println("Message sent : " + msg);
+						//System.out.println("Message sent : " + msg);
 					}
 					
 					@Override
 					public void received(byte[] msg) {
-						System.out.println("Received : " + new String(msg));
+						//System.out.println("Received : " + new String(msg));
 						
 					}
 					
 					@Override
 					public void closed() {
-						System.out.println("Closed");
+						// System.out.println("Closed");
 					}
 				};
 				
@@ -79,12 +79,15 @@ public class BasicQueueTest {
 
 			@Override
 			public void refused() {
-				System.out.println("Refused");
+				//System.out.println("Refused");
 			}
 			
 		};
 		
-		Task.task().post(() -> qb.bind(8080, qal), "Initial bind request");
-		Task.task().post(() -> qb.connect("Broker", 8080, qcl), "Initial connect request");
+		qb.bind(8080, qal);
+		qb.connect("Broker", 8080, qcl);
+		
+		
+		
 	}
 }
