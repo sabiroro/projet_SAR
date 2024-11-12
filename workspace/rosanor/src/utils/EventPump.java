@@ -40,7 +40,7 @@ public class EventPump extends Thread {
     }
 
    
-    public static VerboseLevel VERBOSE = VerboseLevel.HIGH_VERBOSE;
+    public static VerboseLevel VERBOSE = VerboseLevel.NO_VERBOSE;
     
     public static void log(VerboseLevel level, String message) {
 	    if (EventPump.VERBOSE.ordinal() <= level.ordinal()) {

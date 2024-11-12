@@ -24,7 +24,7 @@ public class QueueEchoServer {
 			public void accepted(MessageQueue queue) {
 				System.out.println("Accepted");
 				QueueListener ql = new QueueListener() {
-					
+					int msgs = 0;
 					@Override
 					public void sent(Message msg) {
 						System.out.println("Message sent : " + new String(msg.getBytes()));
@@ -33,7 +33,8 @@ public class QueueEchoServer {
 					@Override
 					public void received(byte[] msg) {
 						System.out.println("Received : " + new String(msg));
-						queue.send(new Message(new String(msg)));
+						String aa =  "" + (msgs++);
+						queue.send(new Message(new String(aa)));
 					}
 					
 					@Override
@@ -52,8 +53,8 @@ public class QueueEchoServer {
 			public void connected(MessageQueue queue) {
 				System.out.println("Connected");
 				System.out.println("Sending message");
-				
 				QueueListener ql = new QueueListener() {
+					int msgs = 0;
 					
 					@Override
 					public void sent(Message msg) {
@@ -63,7 +64,8 @@ public class QueueEchoServer {
 					@Override
 					public void received(byte[] msg) {
 						System.out.println("Received : " + new String(msg));
-						queue.send(new Message(new String(msg)));
+						String aa =  "" + (msgs++);
+						queue.send(new Message(aa));
 					}
 					
 					@Override
@@ -73,7 +75,7 @@ public class QueueEchoServer {
 				};
 				
 				queue.setListener(ql);
-				queue.send(new Message("Hello World Thats a great day dude, how are you ??"));
+				queue.send(new Message(1));
 			}
 
 			@Override

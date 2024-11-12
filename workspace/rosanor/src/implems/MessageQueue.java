@@ -86,11 +86,6 @@ public class MessageQueue extends abstracts.MessageQueue {
                 default -> System.err.println("Error: Unknown state in reader automaton");
             }
         }
-
-		@Override
-		public void closed() {
-			Task.task().post(() -> externalQueueListener.closed(), "External closed event");
-		}
     };
 
 	
@@ -165,8 +160,9 @@ public class MessageQueue extends abstracts.MessageQueue {
 
 	@Override
 	public void close() {
-        EventPump.log(VerboseLevel.LOW_VERBOSE, "MessageQueue: Closing");
+		EventPump.log(VerboseLevel.LOW_VERBOSE, "MessageQueue: Closing");
 		internalChannel.disconnect();
+		Task.task().post(()-> this.externalQueueListener.closed(), "MessageQueue: Closed event");
 	}
 
 	@Override

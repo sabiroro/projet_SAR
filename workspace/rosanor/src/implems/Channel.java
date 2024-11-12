@@ -10,7 +10,6 @@ public class Channel extends abstracts.Channel {
 	public interface ReadListener {
 	    void read(byte[] bytes);
 	    void available();
-	    void closed();
 	}
 
     public interface WriteListener {
@@ -35,11 +34,7 @@ public class Channel extends abstracts.Channel {
 	
 	@Override
 	public void run() {
-		if(disconnected()) {
-			EventPump.log(VerboseLevel.MEDIUM_VERBOSE, "Internal channel closed event");
-			Task.task().post(()-> this.listener.closed(), "Internal channel closed event");
-			return;
-		} else if(!this.buffIn.empty() && this.listener != null) {
+		if(!this.buffIn.empty() && this.listener != null) {
 			EventPump.log(VerboseLevel.HIGH_VERBOSE, "Internal available event");
 			Task.task().post(()-> this.listener.available(), "Internal available event");
 		}
@@ -123,11 +118,12 @@ public class Channel extends abstracts.Channel {
 
 	// Here we have a disconnect method that sets the localDisconnected flag to true 
 	// we donc care about the local one as we wont be able to read or write anymore
+	// We could have returned boolean and return a closed event, this might be a better option
 	@Override
-	public synchronized void disconnect() {
+	public void disconnect() {
 		EventPump.log(VerboseLevel.LOW_VERBOSE, "Internal channel disconnected");
 		localDisconnected = true;
-		remoteDisconnected.set(true);	
+		remoteDisconnected.set(true);
 	}
 
 	// If any of the two sides is disconnected, the channel is disconnected

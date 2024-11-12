@@ -40,12 +40,6 @@ public class BasicTest {
         				// TODO Auto-generated method stub
         				System.out.println("Available");
         			}
-
-					@Override
-					public void closed() {
-						// TODO Auto-generated method stub
-						
-					}
         		};
         		
             	System.out.println("Connected");
@@ -59,7 +53,7 @@ public class BasicTest {
         
         AcceptListener al = new AcceptListener() {	
 			@Override
-			public void accepted(Channel queue) {
+			public void accepted(Channel queue, int port) {
 				System.out.println("Accepted");
 				
 				
@@ -76,12 +70,6 @@ public class BasicTest {
 						System.out.println("Available");
 						byte[] msg = new byte["Hello".getBytes().length];
 						queue.read(msg, 0, "Hello".getBytes().length);
-					}
-
-					@Override
-					public void closed() {
-						// TODO Auto-generated method stub
-						
 					}
 				};
 				
