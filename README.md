@@ -9,7 +9,13 @@ Here is member names of the group:
 - ROSANO Romain (rosanor)
 - CHERBLANC Noah (cherblan)
 - PICAUD Nicolas (picaudn)
-- ROUX Yann (rouxya)
+- ROUX Yann (rouxyan)
+
+# Specification and Design
+- [Channel and Broker Specification](docs/Specification.md) 
+- [Channel and Broker Design](docs/Design.md)
+- [QueueBroker and MessageQueue full-event Specification](docs/MessageQueueSpecification.md)
+- [QueueBroker and MessageQueue full-event Design](docs/MessageQueueDesign.md)
 
 ## Git structure
 The project is divided is two parts as saying before. Each part has different branches associated with it:
