@@ -72,6 +72,8 @@ A channel is the object that allows doing bytes circulation between 2 brokers. T
 2. **Data Transmission:**    
    A channel allows the transmission of data through **read** and **write** operations, where each **channel** can either send or receive byte sequences.
 
+3. **Availability Notification:**    
+   The channel notifies the connected broker when data is available for reading. This notification is triggered by the `available()` event.
 ---
 
 ### Read Operation
@@ -79,7 +81,7 @@ A channel is the object that allows doing bytes circulation between 2 brokers. T
 The **read** function allows a broker to read incoming byte sequences from the connected broker.
 
 - **Method:** `void read(byte[] bytes, int offset, int length, ReadListener listener)`  
-- **Description:** This method triggers the `read(byte[] bytes)` event whenever data is available to read.   
+- **Description:** This method triggers the `read(byte[] bytes)` event with the data as a byte array.   
    - **bytes:** Buffer into which the read bytes are stored.  
    - **offset:** The starting point in the buffer for the next read operation.  
    - **length:** The number of bytes available for reading.  
