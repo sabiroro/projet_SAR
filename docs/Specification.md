@@ -71,9 +71,6 @@ A channel is the object that allows doing bytes circulation between 2 brokers. T
 2. **Data Transmission:**    
    A channel allows the transmission of data through **read** and **write** operations, where each **channel** can either send or receive byte sequences.
 
-3. **Disconnection Handling:**    
-   Either broker can terminate its local channel by invoking `disconnect()`, which raises a `disconnected()` event to indicate the channel's closure.
-
 ---
 
 ### Read Operation
@@ -113,7 +110,7 @@ The **write** function enables a broker to send byte sequences to the connected 
 To terminate the communication link, either broker can initiate a **disconnect**.
 
 - **Method:** `void disconnect()`  
-- **Description:** This method immediately closes the channel and triggers the `disconnected()` event, signaling to the local broker that the communication channel is no longer available.
+- **Description:** This method immediately closes the channel.
 
 #### Additional Listener Interface
 
@@ -141,60 +138,70 @@ Channel {
 
 Here is an example to use these channels and brokers to create an echo server.  
 ```java  
-Broker client = new BrokerImpl("client");  
-Broker server = new BrokerImpl("server");  
-int connection_port = 6969;
-
-client.connect("server", connection_port, new ConnectListener() {  
-	@Override  
-	public void connected(Channel channel) {  
-    	channel.setListener(new Listener() {  
-        	@Override  
-        	public void read(byte[] msg) {  
-            	  
-        		}
-
-        	@Override  
-        	public void written(int nbytes) {  
-            	  
-        	}
-
-        	@Override  
-        	public void available() {  
-            	  
-        	}  
-    	});
-
-    	channel.write("Hello world!".getBytes());  
+Broker b = new Broker("Broker");
+		
+WriteListener wr = new WriteListener() {
+	
+	@Override
+	public void written(int byteWrote) {
+		System.out.println("Written");
 	}
+};
 
-	@Override  
-	public void refused() {  
-    	System.out.println("	-> Connection refused (client)");  
-    	throw new IllegalStateException("	-> Connection refused (client)");  
-	}  
-});
+ConnectListener cl = new ConnectListener() {
+	@Override
+	public void connected(Channel queue) {
+		
+		ReadListener rl = new ReadListener() {
+			@Override
+			public void read(byte[] bytes) {
+				System.out.println("Read");
+			}
 
-server.accept(connection_port, new AcceptListener() {  
-	@Override  
-	public void accepted(Channel channel) {  
-    	channel.setListener(new Listener() {  
-        	@Override  
-        	public void read(byte[] msg) {  
-            	System.out.println("	-> Message echoed : " + new String(msg));  
-            	channel.close();  
-        		}
+			@Override
+			public void available() {
+				// TODO Auto-generated method stub
+				System.out.println("Available");
+			}
+		};
+		
+		System.out.println("Connected");
+		queue.setListener(rl);
+		byte[] msg = "Hello".getBytes();
+		queue.write(msg, 0, msg.length, wr);
+	}
+	@Override
+	public void refused() { System.err.println("Should not fail");}
+};
 
-        	@Override  
-        	public void wrtitten(int nbytes) {  
-            	// Nothing there  
-        	}
+AcceptListener al = new AcceptListener() {	
+	@Override
+	public void accepted(Channel queue, int port) {
+		System.out.println("Accepted");
+		
+		
+		ReadListener rl = new ReadListener() {
+			@Override
+			public void read(byte[] bytes) {
+				System.out.println("Read : " + new String(bytes));
+				
+			}
 
-        	@Override  
-        	public void available() {  
-            	System.out.println("	-> Connection closed (client)");  
-        	}  
-    	});  
-	}  
-});  
+			@Override
+			public void available() {
+				// TODO Auto-generated method stub
+				System.out.println("Available");
+				byte[] msg = new byte["Hello".getBytes().length];
+				queue.read(msg, 0, "Hello".getBytes().length);
+			}
+		};
+		
+		queue.setListener(rl);
+	}
+};
+
+EventPump.getInstance().start();
+System.out.println("Lets go");
+Task.task().post(()-> b.accept(8080, al), "Accepting");
+Task.task().post(()-> b.connect(8080, "Broker", cl), "Connecting"); 
 ````
