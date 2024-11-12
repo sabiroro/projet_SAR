@@ -43,6 +43,20 @@ However, we have to consider 2 cases:
 ![](AcceptWithConnect.png)
 ![](AcceptWithoutConnect.png)
 
+#### **BrokerManager**:
+
+To allow our application to know which broker is created, we use a brokermanager that saves all the brokers created. Thus, when a broker tries to connect to another broker, the connect method will call the brokermanager thanks to its name to get the broker to connect to.
+
+#### **Tasks**:
+
+Each client will use a task to manage its connection. This task will post the events to the event pump.
+
+#### **Threads**
+
+Because of the event-driven approach, we use only one thread for the event pump.
+Tests will use another thread.
+
+
 ## Classes diagram
 
 Here is the classes diagram of this system:  
